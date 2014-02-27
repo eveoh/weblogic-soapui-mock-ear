@@ -1,0 +1,64 @@
+group = 'nl.eveoh.weblogic'
+version = '1.0.0'
+description = 'Weblogic SoapUI Mock EAR Module'
+
+apply plugin: 'java'
+apply plugin: 'ear'
+
+repositories {
+    maven {
+        url "https://maven.eveoh.nl/content/groups/public"
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.11'
+}
+
+dependencies {
+    // Workaround to include WAR. See http://issues.gradle.org/browse/GRADLE-1912
+    deploy files(soapUiMockWar)
+}
+
+ear {
+    deploymentDescriptor {
+        version = "5"
+        displayName = weblogicDeploymentDescription
+        description = weblogicDeploymentDescription
+
+        webModule(soapUiMockWar, weblogicDeploymentPath)
+    }
+
+    manifest {
+        attributes(
+                'Implementation-Vendor': 'Eveoh',
+                'Provider': 'Gradle',
+                'Build-Version': version,
+                'WebLogic-Application-Version': version
+        )
+    }
+}
+
+configurations {
+    weblogicDeployer
+}
+
+dependencies {
+    weblogicDeployer 'com.oracle.weblogic-deployer:weblogic-deployer:10.3.6.0'
+}
+
+task deploy(type: JavaExec, dependsOn: ear) {
+    description = "Deploy to Weblogic server"
+
+    classpath = configurations.weblogicDeployer
+    main = "weblogic.Deployer"
+    args = "-noexit -adminurl $weblogicAdminUrl -user $weblogicUser -password $weblogicPassword -deploy -name $weblogicDeploymentName -source $ear.archivePath -upload -remote -verbose".split().toList()
+}
+
+task undeploy(type: JavaExec) {
+    description = "Undeploy from Weblogic server"
+
+    classpath = configurations.weblogicDeployer
+    main = "weblogic.Deployer"
+    args = "-noexit -adminurl $weblogicAdminUrl -user $weblogicUser -password $weblogicPassword -undeploy -name $weblogicDeploymentName -remote -verbose".split().toList()
+}
